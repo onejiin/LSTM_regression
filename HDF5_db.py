@@ -16,6 +16,41 @@ save_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_imageinput/tra
 save_gzip_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_imageinput/train_DepFin_gzip'
 save_list_dot_txt = '/srv/repository/HDF5/Sequence_50timestep_imageinput/train_DepFin_list'
 
+
+def hdf5_batch(X_train, y_train, hdf_cnt):
+    # Transform HDF5, (time step[50] * "20") = 1000 data -> 20 kinds sequences
+    kind_sequences = 20
+    cnt = 0
+#    tot_len = len(tot_sequence) * maxlen
+
+    # X_train shape = ([total data set] [maxlen:50] [172*224])
+    # for i in range(len(X_train)):
+    while 1:
+        if ((cnt + 1) * kind_sequences) > len(X_train):
+            array_1000_depth = X_train[(cnt * kind_sequences):]
+            array_1000_label = y_train[(cnt * kind_sequences):]
+
+            dot_h5_file_name = save_dot_h5_file_name + str(hdf_cnt) + '.h5'
+            # gzip_dot_h5_file_name = save_gzip_dot_h5_file_name + str(cnt_3000) + '.h5'
+            list_dot_txt = save_list_dot_txt + str(hdf_cnt) + '.txt'
+            write_HDF5_sequence(array_1000_depth, array_1000_label, maxlen, dot_h5_file_name, list_dot_txt)
+            break
+
+        else:
+            array_1000_depth = X_train[(cnt * kind_sequences):((cnt + 1) * kind_sequences)]
+            array_1000_label = y_train[(cnt * kind_sequences):((cnt + 1) * kind_sequences)]
+
+            dot_h5_file_name = save_dot_h5_file_name + str(hdf_cnt) + '.h5'
+            # gzip_dot_h5_file_name = save_gzip_dot_h5_file_name + str(cnt_3000) + '.h5'
+            list_dot_txt = save_list_dot_txt + str(hdf_cnt) + '.txt'
+            write_HDF5_sequence(array_1000_depth, array_1000_label, maxlen, dot_h5_file_name, list_dot_txt)
+
+        cnt += 1
+        hdf_cnt += 1
+
+    return hdf_cnt
+
+
 def main(argv):
     # make sequence set
     f = open(READ)
@@ -30,38 +65,29 @@ def main(argv):
     shuffle(tot_sequence)
     (X_train, y_train) = load_data(tot_sequence)
     print('load train database...')
-    # zero padding and pruning for max sequence
-    X_train = padding_data(X_train)
-    y_train = padding_label(y_train)
 
-    # Transform HDF5, (time step[50] * "20") = 1000 data -> 20 kinds sequences
-    kind_sequences = 20
-    cnt = 0
-    tot_len = len(tot_sequence)*maxlen
+    hdf_cnt = 0
+    batch_size = 1000
+    last_index = 0
+    for index in range(int(X_train.shape[0]/batch_size)):
+        X_batch = X_train[index*batch_size:(index+1)*batch_size]
+        y_batch = y_train[index*batch_size:(index+1)*batch_size]
 
-    # X_train shape = ([total data set] [maxlen:50] [172*224])
-    #for i in range(len(X_train)):
-    while 1:
-        if ((cnt+1)*kind_sequences) > len(X_train):
-            array_1000_depth = X_train[(cnt * kind_sequences):tot_len-1]
-            array_1000_label = y_train[(cnt * kind_sequences):tot_len-1]
+        X_batch = padding_data(X_batch)
+        y_batch = padding_label(y_batch)
 
-            dot_h5_file_name = save_dot_h5_file_name + str(cnt) + '.h5'
-            # gzip_dot_h5_file_name = save_gzip_dot_h5_file_name + str(cnt_3000) + '.h5'
-            list_dot_txt = save_list_dot_txt + str(cnt) + '.txt'
-            write_HDF5_sequence(array_1000_depth, array_1000_label, maxlen, dot_h5_file_name, list_dot_txt)
-            break
+        prev_cnt = hdf5_batch(X_batch, y_batch, hdf_cnt)
 
-        else:
-            array_1000_depth = X_train[(cnt * kind_sequences):((cnt+1) * kind_sequences)]
-            array_1000_label = y_train[(cnt * kind_sequences):((cnt+1) * kind_sequences)]
+        hdf_cnt = prev_cnt
+        last_index = index
 
-            dot_h5_file_name = save_dot_h5_file_name + str(cnt) + '.h5'
-            #gzip_dot_h5_file_name = save_gzip_dot_h5_file_name + str(cnt_3000) + '.h5'
-            list_dot_txt = save_list_dot_txt + str(cnt) + '.txt'
-            write_HDF5_sequence(array_1000_depth, array_1000_label, maxlen, dot_h5_file_name, list_dot_txt)
+    #remain batch index
+    X_batch = X_train[last_index * batch_size:]
+    y_batch = y_train[last_index * batch_size:]
+    X_batch = padding_data(X_batch)
+    y_batch = padding_label(y_batch)
 
-        cnt += 1
+    prev_cnt = hdf5_batch(X_batch, y_batch, hdf_cnt)
 
 
 if __name__ == '__main__':
