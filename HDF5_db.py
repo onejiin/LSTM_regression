@@ -12,9 +12,9 @@ __author__ = 'wjung'
 #READ = './folder_list_small_set.scp'
 READ = './folder_list_train.scp'
 
-save_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_imageinput/train_DepFin'
-save_gzip_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_imageinput/train_DepFin_gzip'
-save_list_dot_txt = '/srv/repository/HDF5/Sequence_50timestep_imageinput/train_DepFin_list'
+save_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_heatmap/train_DepFin'
+save_gzip_dot_h5_file_name = '/srv/repository/HDF5/Sequence_50timestep_heatmap/train_DepFin_gzip'
+save_list_dot_txt = '/srv/repository/HDF5/Sequence_50timestep_heatmap/train_DepFin_list'
 
 
 def hdf5_batch(X_train, y_train, hdf_cnt):
@@ -26,7 +26,7 @@ def hdf5_batch(X_train, y_train, hdf_cnt):
     # X_train shape = ([total data set] [maxlen:50] [172*224])
     # for i in range(len(X_train)):
     while 1:
-        if ((cnt + 1) * kind_sequences) > len(X_train):
+        if ((cnt + 1) * kind_sequences) >= len(X_train):
             array_1000_depth = X_train[(cnt * kind_sequences):]
             array_1000_label = y_train[(cnt * kind_sequences):]
 
@@ -34,6 +34,7 @@ def hdf5_batch(X_train, y_train, hdf_cnt):
             # gzip_dot_h5_file_name = save_gzip_dot_h5_file_name + str(cnt_3000) + '.h5'
             list_dot_txt = save_list_dot_txt + str(hdf_cnt) + '.txt'
             write_HDF5_sequence(array_1000_depth, array_1000_label, maxlen, dot_h5_file_name, list_dot_txt)
+            hdf_cnt += 1
             break
 
         else:
@@ -67,11 +68,11 @@ def main(argv):
     print('load train database...')
 
     hdf_cnt = 0
-    batch_size = 1000
     last_index = 0
+
     for index in range(int(X_train.shape[0]/batch_size)):
-        X_batch = X_train[index*batch_size:(index+1)*batch_size]
-        y_batch = y_train[index*batch_size:(index+1)*batch_size]
+        X_batch = X_train[index * batch_size:(index+1) * batch_size]
+        y_batch = y_train[index * batch_size:(index+1) * batch_size]
 
         X_batch = padding_data(X_batch)
         y_batch = padding_label(y_batch)
@@ -81,13 +82,20 @@ def main(argv):
         hdf_cnt = prev_cnt
         last_index = index
 
+        print ("train : "), index * batch_size, ("~"), (index+1) * batch_size
+
+#    print ("hdf_cnt"), hdf_cnt
+#    print int(X_train.shape[0]), (","), int((last_index+1) * batch_size)
+    print ("train : "), (last_index+1) * batch_size, ("~"), X_train.shape[0]
     #remain batch index
-    X_batch = X_train[last_index * batch_size:]
-    y_batch = y_train[last_index * batch_size:]
+    X_batch = X_train[(last_index+1) * batch_size:]
+    y_batch = y_train[(last_index+1) * batch_size:]
     X_batch = padding_data(X_batch)
     y_batch = padding_label(y_batch)
 
     prev_cnt = hdf5_batch(X_batch, y_batch, hdf_cnt)
+
+    print prev_cnt
 
 
 if __name__ == '__main__':
