@@ -68,6 +68,7 @@ def main(argv):
     print('load train database...')
 
     hdf_cnt = 0
+    batch_size = 100
     last_index = 0
 
     for index in range(int(X_train.shape[0]/batch_size)):
